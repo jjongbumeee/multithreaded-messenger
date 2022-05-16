@@ -1,7 +1,9 @@
 # client.py
 import socket
 import threading
-import re
+import protocol
+import json
+from datetime import datetime
 
 HOST = '127.0.0.1'
 PORT = 20000
@@ -17,6 +19,7 @@ class ClientSocket:
         self.myName = ''
 
     def _sendMsg(self, msg):
+        # TODO: json dump처리
         data = msg.encode()
         self.client_socket.send(data)
 
@@ -25,54 +28,68 @@ class ClientSocket:
         msg = data.decode()
         return msg
 
-    def _recvMsg(self):
-        msg = self._recv().split('@')
-        print(msg)
-        if self._serverPrefix == '':
-            self._serverPrefix = msg[0]
-        msgString = f'[{msg[0]}] {msg[1]}'
-        return msgString
-
     def close(self):
         return self.client_socket.close()
 
     def connect(self):
-        print(self._recvMsg())
-        self.myName = input()
-        self._sendMsg(self.myName)
-        recvList = self._recv()
+        # REQ_NAME recv
+        reqName = json.loads(self._recv())
+        print(reqName)
         try:
-            self.friendList = re.sub('[\[\]]', '', recvList).split(' ')
-            print(self.friendList)
-        except Exception as exception:
-            self._sendMsg(f'{self._serverPrefix}@fail')
-            print(f'{exception}')
-            return
-        self._sendMsg(f'{self._serverPrefix}@success')
+            if reqName['proto'] == 'REQ_NAME':
+
+                # RES_NAME send
+                self.myName = input()
+                resNameMsg = protocol.resClientName(self.myName)
+                self._sendMsg(json.dumps(resNameMsg))
+
+                # SEND_FRI_LIST recv
+                friendListMsg = json.loads(self._recv())
+                if friendListMsg['proto'] == 'SEND_FRI_LIST':
+                    self.friendList = friendListMsg['contents']
+                    print(friendListMsg['contents'])
+
+                    # ACK send
+                    ackMsg = protocol.ack()
+                    self._sendMsg(json.dumps(ackMsg))
+                else:
+                    raise ConnectionAbortedError('friend list exchange protocol error')
+            else:
+                raise ConnectionRefusedError('protocol sync error')
+        except ConnectionError as error:
+            print(error)
 
     def _msgHandler(self):
-        while True:
-            print(self._recvMsg())
+        try:
+            while True:
+                msg = json.loads(self._recv())
+                if msg['proto'] == 'SEND_MSG':
+                    print(f"""({datetime.now().strftime('%Y-%m-%d %H:%M')}) {msg['sender']} : {msg['message']}""")
+        except Exception as e:
+            print(e)
 
     def openRecvThread(self):
         self.recvHandler = threading.Thread(target=self._msgHandler)
+        self.recvHandler.daemon = True
         self.recvHandler.start()
 
     def sendMsgToFriend(self, friend, msg):
         # friend validate
         if friend not in self.friendList:
             raise Exception(f"You don't have '{friend}' friend")
-        self._sendMsg(f'u{self.myName}@{friend}@{msg}')
-        # result
-        print(self._recvMsg())
+        sendMsgProto = protocol.sendMsg(msg, self.myName, 'uni', friend)
+        self._sendMsg(json.dumps(sendMsgProto, default=str, indent=2))
 
     def sendBroadcast(self, msg):
-        self._sendMsg(f'b{self.myName}@{msg}')
-        print(self._recvMsg())
+        broadMsg = protocol.sendMsg(msg, self.myName, 'broad', 'all')
+        self._sendMsg(json.dumps(broadMsg, default=str, indent=2))
 
     def sendMulticast(self, receivers, msg):
-        self._sendMsg(f'm{self.myName}@{receivers}@{msg}')
-        print(self._recvMsg())
+        for receiver in receivers:
+            multiMsg = protocol.sendMsg(msg, self.myName, 'multi', receiver)
+            self._sendMsg(json.dumps(multiMsg, default=str, indent=2))
+        # self._sendMsg(f'm{self.myName}@{receivers}@{msg}')
+        # print(self._recvMsg())
 
 
 if __name__ == '__main__':

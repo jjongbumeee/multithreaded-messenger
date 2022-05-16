@@ -1,4 +1,4 @@
-def sendMsg(msg, sender, transMethod, *receiver):
+def sendMsg(msg, sender, transMethod, receiver):
     return {
         'proto': 'SEND_MSG',
         'method': transMethod,
@@ -15,11 +15,12 @@ def reqClientName():
     }
 
 
-def resClientName(result=200):
+def resClientName(name='', result=200):
     return {
         'proto': 'RES_NAME',
         'receiver': 'SERVER',
-        'result': result
+        'result': result,
+        'name': name
     }
 
 
