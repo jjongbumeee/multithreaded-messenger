@@ -19,7 +19,7 @@ class ClientSocket:
         self.myName = ''
 
     def _sendMsg(self, msg):
-        # TODO: json dump처리
+        msg = json.dumps(msg, default=str, indent=2)
         data = msg.encode()
         self.client_socket.send(data)
 
@@ -41,7 +41,7 @@ class ClientSocket:
                 # RES_NAME send
                 self.myName = input()
                 resNameMsg = protocol.resClientName(self.myName)
-                self._sendMsg(json.dumps(resNameMsg))
+                self._sendMsg(resNameMsg)
 
                 # SEND_FRI_LIST recv
                 friendListMsg = json.loads(self._recv())
@@ -51,7 +51,7 @@ class ClientSocket:
 
                     # ACK send
                     ackMsg = protocol.ack()
-                    self._sendMsg(json.dumps(ackMsg))
+                    self._sendMsg(ackMsg)
                 else:
                     raise ConnectionAbortedError('friend list exchange protocol error')
             else:
@@ -78,16 +78,16 @@ class ClientSocket:
         if friend not in self.friendList:
             raise Exception(f"You don't have '{friend}' friend")
         sendMsgProto = protocol.sendMsg(msg, self.myName, 'uni', friend)
-        self._sendMsg(json.dumps(sendMsgProto, default=str, indent=2))
+        self._sendMsg(sendMsgProto)
 
     def sendBroadcast(self, msg):
         broadMsg = protocol.sendMsg(msg, self.myName, 'broad', 'all')
-        self._sendMsg(json.dumps(broadMsg, default=str, indent=2))
+        self._sendMsg(broadMsg)
 
     def sendMulticast(self, receivers, msg):
         for receiver in receivers:
             multiMsg = protocol.sendMsg(msg, self.myName, 'multi', receiver)
-            self._sendMsg(json.dumps(multiMsg, default=str, indent=2))
+            self._sendMsg(multiMsg)
         # self._sendMsg(f'm{self.myName}@{receivers}@{msg}')
         # print(self._recvMsg())
 
