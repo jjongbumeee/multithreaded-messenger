@@ -1,6 +1,6 @@
 # client.py
 import configparser
-import socket
+from commonSocket import commonSocket
 import threading
 import protocol
 import json
@@ -13,31 +13,16 @@ HOST = config['DEFAULT']['HOST']
 PORT = int(config['DEFAULT']['PORT'])
 
 
-class ClientSocket:
+class ClientSocket(commonSocket):
     def __init__(self, ipAddr, port):
-        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client_socket.connect((ipAddr, port))
+        super().__init__(ipAddr, port)
         self.friendList = []
         self.recvHandler = ''
-        self._serverPrefix = ''
         self.myName = ''
-
-    def _sendMsg(self, msg):
-        msg = json.dumps(msg, default=str, indent=2)
-        data = msg.encode()
-        self.client_socket.send(data)
-
-    def _recv(self):
-        data = self.client_socket.recv(1024)
-        msg = data.decode()
-        return msg
-
-    def close(self):
-        return self.client_socket.close()
 
     def connect(self):
         # REQ_NAME recv
-        reqName = json.loads(self._recv())
+        reqName = json.loads(self.recv())
         print(reqName)
         try:
             if reqName['proto'] == 'REQ_NAME':
@@ -45,17 +30,17 @@ class ClientSocket:
                 # RES_NAME send
                 self.myName = input()
                 resNameMsg = protocol.resClientName(self.myName)
-                self._sendMsg(resNameMsg)
+                self.sendMsg(resNameMsg)
 
                 # SEND_FRI_LIST recv
-                friendListMsg = json.loads(self._recv())
+                friendListMsg = json.loads(self.recv())
                 if friendListMsg['proto'] == 'SEND_FRI_LIST':
                     self.friendList = friendListMsg['contents']
                     print(friendListMsg['contents'])
 
                     # ACK send
                     ackMsg = protocol.ack()
-                    self._sendMsg(ackMsg)
+                    self.sendMsg(ackMsg)
                 else:
                     raise ConnectionAbortedError('friend list exchange protocol error')
             else:
@@ -67,7 +52,7 @@ class ClientSocket:
         try:
             # print received messages
             while True:
-                msg = json.loads(self._recv())
+                msg = json.loads(self.recv())
                 if msg['proto'] == 'SEND_MSG':
                     print(f"""({datetime.now().strftime('%Y-%m-%d %H:%M')}) {msg['sender']} : {msg['message']}""")
         except Exception as e:
@@ -84,15 +69,15 @@ class ClientSocket:
         if friend not in self.friendList:
             raise Exception(f"You don't have '{friend}' friend")
         sendMsgProto = protocol.sendMsg(msg, self.myName, 'uni', friend)
-        self._sendMsg(sendMsgProto)
+        self.sendMsg(sendMsgProto)
 
     def sendBroadcast(self, msg):
         broadMsg = protocol.sendMsg(msg, self.myName, 'broad', 'all')
-        self._sendMsg(broadMsg)
+        self.sendMsg(broadMsg)
 
     def sendMulticast(self, recvs, msg):
         multiMsg = protocol.sendMsg(msg, self.myName, 'multi', recvs)
-        self._sendMsg(multiMsg)
+        self.sendMsg(multiMsg)
 
 
 if __name__ == '__main__':
