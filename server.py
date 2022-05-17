@@ -69,49 +69,54 @@ class ServerSocket:
 
     def _friendMsgHandle(self, client):
         msg = json.loads(self._recv(client))
+        # validate proto
         if msg['proto'] == 'SEND_MSG':
+            # broadcast
             if msg['method'] == 'broad':
                 print(f'{msg["sender"]} > ALL : {msg["message"]}')
                 for name, data in self.socketPool.items():
                     broadMsg = protocol.sendMsg(msg['message'], msg['sender'], 'broad', name)
                     self._send(data['socket'], broadMsg)
 
+            # unicast
             elif msg['method'] == 'uni':
                 print(f"{msg['sender']} > {msg['receiver']} : {msg['message']}")
+                # each other are not friends
                 if msg['receiver'] not in self.socketPool[msg['sender']]['friends']:
                     raise AssertionError('friends are not connected')
+                # receiver client is unconnected
                 elif msg['receiver'] not in self.socketPool.keys():
                     errMsg = protocol.sendMsg(f"{client} is unconnected", "SERVER", 'uni', msg['sender'])
                     self._send(client, errMsg)
+                # send message
                 else:
                     sendMsg = protocol.sendMsg(msg['message'], msg['sender'], 'uni', msg['receiver'])
                     print(sendMsg)
                     self._send(self.socketPool[msg['receiver']]['socket'], sendMsg)
 
+            # multicast
             elif msg['method'] == 'multi':
-                # TODO: uni로 변경하는 작업
                 print(f"{msg['sender']} > {msg['receiver']} : {msg['message']}")
-                if msg['receiver'] not in self.socketPool.keys():
-                    errMsg = protocol.sendMsg(f"{client} is unconnected", "SERVER", 'uni', msg['sender'])
-                    self._send(client, errMsg)
-                else:
-                    sendMsg = protocol.sendMsg(msg['message'], msg['sender'], 'multi', msg['receiver'])
-                    print(sendMsg)
-                    self._send(self.socketPool[msg['receiver']]['socket'], sendMsg)
-                # sender, receivers, msg = msg.split('@')
-                # mailList = map(str.strip, receivers[1:-1].replace("'", '').split(','))
-                # print(sender, mailList, msg)
-                # for receiver in mailList:
-                #     self._send(self.socketMap[receiver], f'{sender}@{msg}')
-                # self._send(client, f'{MSGPREFIX}@{sender} >> {receivers} : {msg}')
+                # receiver client is unconnected
+                for target in msg['receiver']:
+                    if target not in self.socketPool.keys():
+                        errMsg = protocol.sendMsg(f"{client} is unconnected", "SERVER", 'uni', msg['sender'])
+                        self._send(client, errMsg)
+                    # send message
+                    else:
+                        sendMsg = protocol.sendMsg(msg['message'], msg['sender'], 'multi', target)
+                        print(sendMsg)
+                        self._send(self.socketPool[target]['socket'], sendMsg)
         else:
-            raise ConnectionAbortedError('protocl error')
+            raise ConnectionAbortedError('protocol error')
 
     def _handler(self, clientSocketObj, addr):
         print('Connected by', addr)
         try:
+            # client connection initialize
             self._connectionInit(clientSocketObj)
             while True:
+                # message handling
                 self._friendMsgHandle(clientSocketObj)
         except Exception as e:
             print(f'{addr} => except : {e}')
@@ -130,10 +135,6 @@ class ServerSocket:
 
     def close(self):
         return self.serverSocket.close()
-
-    def reqClientName(self, clientSocket):
-
-        self._send(clientSocket, )
 
 
 if __name__ == '__main__':

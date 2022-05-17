@@ -61,6 +61,7 @@ class ClientSocket:
 
     def _msgHandler(self):
         try:
+            # print received messages
             while True:
                 msg = json.loads(self._recv())
                 if msg['proto'] == 'SEND_MSG':
@@ -69,6 +70,7 @@ class ClientSocket:
             print(e)
 
     def openRecvThread(self):
+        # receiving thread
         self.recvHandler = threading.Thread(target=self._msgHandler)
         self.recvHandler.daemon = True
         self.recvHandler.start()
@@ -84,12 +86,9 @@ class ClientSocket:
         broadMsg = protocol.sendMsg(msg, self.myName, 'broad', 'all')
         self._sendMsg(broadMsg)
 
-    def sendMulticast(self, receivers, msg):
-        for receiver in receivers:
-            multiMsg = protocol.sendMsg(msg, self.myName, 'multi', receiver)
-            self._sendMsg(multiMsg)
-        # self._sendMsg(f'm{self.myName}@{receivers}@{msg}')
-        # print(self._recvMsg())
+    def sendMulticast(self, recvs, msg):
+        multiMsg = protocol.sendMsg(msg, self.myName, 'multi', recvs)
+        self._sendMsg(multiMsg)
 
 
 if __name__ == '__main__':
