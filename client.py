@@ -3,7 +3,7 @@ import configparser
 from commonSocket import commonSocket
 import threading
 import protocol
-import json
+import setproctitle
 from datetime import datetime
 
 config = configparser.ConfigParser()
@@ -11,6 +11,8 @@ config.read('config.ini')
 
 HOST = config['DEFAULT']['HOST']
 PORT = int(config['DEFAULT']['PORT'])
+setproctitle.setproctitle('messenger2')
+print(setproctitle.getproctitle())
 
 
 class ClientSocket(commonSocket):
@@ -22,7 +24,7 @@ class ClientSocket(commonSocket):
 
     def connect(self):
         # REQ_NAME recv
-        reqName = json.loads(self.recv())
+        reqName = self.recv()
         print(reqName)
         try:
             if reqName['proto'] == 'REQ_NAME':
@@ -33,7 +35,7 @@ class ClientSocket(commonSocket):
                 self.sendMsg(resNameMsg)
 
                 # SEND_FRI_LIST recv
-                friendListMsg = json.loads(self.recv())
+                friendListMsg = self.recv()
                 if friendListMsg['proto'] == 'SEND_FRI_LIST':
                     self.friendList = friendListMsg['contents']
                     print(friendListMsg['contents'])
@@ -52,7 +54,7 @@ class ClientSocket(commonSocket):
         try:
             # print received messages
             while True:
-                msg = json.loads(self.recv())
+                msg = self.recv()
                 if msg['proto'] == 'SEND_MSG':
                     print(f"""({datetime.now().strftime('%Y-%m-%d %H:%M')}) {msg['sender']} : {msg['message']}""")
         except Exception as e:

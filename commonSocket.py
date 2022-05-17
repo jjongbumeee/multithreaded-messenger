@@ -16,7 +16,7 @@ class commonSocket:
     def recv(self):
         data = self.mySocket.recv(1024)
         msg = data.decode()
-        return msg
+        return json.loads(msg)
 
     def close(self):
         return self.mySocket.close()

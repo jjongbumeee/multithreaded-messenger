@@ -3,7 +3,7 @@ import configparser
 import socket
 import threading
 import protocol
-from queue import Queue
+import psutil
 import json
 
 config = configparser.ConfigParser()
@@ -116,8 +116,31 @@ class ServerSocket:
         else:
             raise ConnectionAbortedError('protocol error')
 
+    def _listProc(self):
+        try:
+            for proc in psutil.process_iter():
+                processName = proc.name()
+                pid = proc.pid
+                if processName == 'Python':
+
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    def _killPid(self, pid):
+        try:
+            pass
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+
     def _adminMsgHandle(self, adminSocket):
-        pass
+        msg = json.loads(self._recv(adminSocket))
+        if msg['proto'] == 'LIST_PROC':
+            self._listProc()
+        elif msg['proto'] == 'KILL_USER':
+            self._killPid(msg['pid'])
+        elif msg['proto'] == 'KILL_ALL':
+            pass
+        elif msg['proto'] == 'SERVER_RESOURCE':
+            pass
 
     def _handler(self, clientSocketObj, addr):
         print('Connected by', addr)

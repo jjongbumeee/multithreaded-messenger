@@ -40,9 +40,34 @@ def ack(result=200):
     }
 
 
-def isAdmin():
+def isAdmin(password='1234'):
     return {
         'proto': 'CONF_ADMIN',
         'receiver': 'SERVER',
-        'password': '1234'
+        'password': password
+    }
+
+
+def listProcesses():
+    return {
+        'proto': 'LIST_PROC'
+    }
+
+
+def killUser(pid):
+    return {
+        'proto': 'KILL_USER',
+        'pid': pid
+    }
+
+
+def killAllUser():
+    return {
+        'proto': 'KILL_ALL'
+    }
+
+
+def monitorServerResource(menu):
+    return {
+        'proto': 'SERVER_RESOURCE'
     }
