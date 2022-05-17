@@ -1,11 +1,13 @@
 # server.py
+import configparser
 import socket
 import threading
 import protocol
 from queue import Queue
 import json
 
-MSGPREFIX = 'SERVER'
+config = configparser.ConfigParser()
+config.read('config.ini')
 
 
 class ServerSocket:
@@ -14,7 +16,8 @@ class ServerSocket:
         self.serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socketPool = {}
-        self.initFriends = ['jay', 'hun']
+        self.initFriends = [s.strip() for s in config['DEFAULT']['INIT_FRI'].split(',')]
+        print(self.initFriends)
 
     def _send(self, client, msg):
         msg = json.dumps(msg, default=str, indent=2)
@@ -33,7 +36,7 @@ class ServerSocket:
                 friendList.append(initFriend)
         return friendList
 
-    def _connectionInit(self, clientSocketObj):
+    def _clientConnectionInit(self, clientSocketObj):
         # request client name (REQ_NAME) send
         msg = protocol.reqClientName()
         self._send(clientSocketObj, msg)
@@ -62,6 +65,9 @@ class ServerSocket:
                     print(f'{name} client connected')
                 else:
                     raise ConnectionError('ack error has occurred')
+                return True
+            elif nameRes['proto'] == 'CONF_ADMIN':
+                return False
             else:
                 raise ConnectionAbortedError('name response from client is abnormal')
         except ConnectionError as e:
@@ -110,14 +116,21 @@ class ServerSocket:
         else:
             raise ConnectionAbortedError('protocol error')
 
+    def _adminMsgHandle(self, adminSocket):
+        pass
+
     def _handler(self, clientSocketObj, addr):
         print('Connected by', addr)
         try:
-            # client connection initialize
-            self._connectionInit(clientSocketObj)
-            while True:
-                # message handling
-                self._friendMsgHandle(clientSocketObj)
+            # client connection initialize (Admin client returns FALSE)
+            if self._clientConnectionInit(clientSocketObj):
+                while True:
+                    # message handling
+                    self._friendMsgHandle(clientSocketObj)
+            else:
+                while True:
+                    self._adminMsgHandle(clientSocketObj)
+
         except Exception as e:
             print(f'{addr} => except : {e}')
 

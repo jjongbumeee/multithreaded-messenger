@@ -38,3 +38,11 @@ def ack(result=200):
         'receiver': 'SERVER',
         'result': result
     }
+
+
+def isAdmin():
+    return {
+        'proto': 'CONF_ADMIN',
+        'receiver': 'SERVER',
+        'password': '1234'
+    }

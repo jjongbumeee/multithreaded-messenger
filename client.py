@@ -1,12 +1,16 @@
 # client.py
+import configparser
 import socket
 import threading
 import protocol
 import json
 from datetime import datetime
 
-HOST = '127.0.0.1'
-PORT = 20000
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+HOST = config['DEFAULT']['HOST']
+PORT = int(config['DEFAULT']['PORT'])
 
 
 class ClientSocket:
