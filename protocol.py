@@ -76,13 +76,40 @@ def resKillUser(name, result=200):
         'result': result
     }
 
+
 def killAllUser():
     return {
         'proto': 'KILL_ALL'
     }
 
 
-def monitorServerResource(menu):
+def reqServerStat():
     return {
-        'proto': 'SERVER_RESOURCE'
+        'proto': 'REQ_SERVER_STAT',
+    }
+
+
+def resServerStat(utilization, memoryUsage, clientNum, connections):
+    return {
+        'proto': 'RES_SERVER_STAT',
+        'cpu': utilization,
+        'mem': memoryUsage,
+        'clientNum': clientNum,
+        'connections': connections
+    }
+
+
+def reqClientStat(name):
+    return {
+        'proto': 'REQ_CLIENT_STAT',
+        'name': name
+    }
+
+
+def resClientStat(util, mem, conn=''):
+    return {
+        'proto': 'RES_CLIENT_STAT',
+        'cpu': util,
+        'mem': mem,
+        'connections': conn
     }

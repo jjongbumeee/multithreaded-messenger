@@ -12,7 +12,7 @@ def signalHandler(signum, _):
     psutil.Process(os.getpid()).terminate()
 
 
-class commonSocket:
+class CommonSocket:
     def __init__(self, ipAddr, port):
         self.mySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.mySocket.connect((ipAddr, port))

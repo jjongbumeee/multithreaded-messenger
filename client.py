@@ -1,7 +1,7 @@
 # client.py
 import configparser
 import signal
-from commonSocket import commonSocket
+from commonSocket import CommonSocket
 import threading
 import protocol
 import os
@@ -15,7 +15,7 @@ HOST = config['DEFAULT']['HOST']
 PORT = int(config['DEFAULT']['PORT'])
 
 
-class ClientSocket(commonSocket):
+class ClientSocket(CommonSocket):
     def __init__(self, ipAddr, port):
         super().__init__(ipAddr, port)
         self.friendList = []
@@ -51,7 +51,7 @@ class ClientSocket(commonSocket):
 
     def _msgHandler(self):
         try:
-            # print received messages
+            # handle received messages
             while True:
                 msg = self.recv()
                 if msg['proto'] == 'SEND_MSG':
@@ -59,6 +59,9 @@ class ClientSocket(commonSocket):
                 elif msg['proto'] == 'KILL_USER':
                     clientSocket.close()
                     psutil.Process(os.getpid()).send_signal(signal.SIGTERM)
+                elif msg['proto'] == 'REQ_CLIENT_STAT':
+                    resMsg = protocol.resClientStat(psutil.cpu_percent(), psutil.virtual_memory().available)
+                    self.sendMsg(resMsg)
         except Exception as e:
             print(e)
 
@@ -71,7 +74,8 @@ class ClientSocket(commonSocket):
     def sendMsgToFriend(self, friend, msg):
         # friend validate
         if friend not in self.friendList:
-            raise Exception(f"You don't have '{friend}' friend")
+            print(f"You don't have '{friend}' friend")
+            return
         sendMsgProto = protocol.sendMsg(msg, self.myName, 'uni', friend)
         self.sendMsg(sendMsgProto)
 

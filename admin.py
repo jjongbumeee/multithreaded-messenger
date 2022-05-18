@@ -1,8 +1,7 @@
 # admin.py
 import protocol
-import threading
 from configparser import ConfigParser
-from commonSocket import commonSocket
+from commonSocket import CommonSocket
 
 config = ConfigParser()
 config.read('config.ini')
@@ -11,7 +10,7 @@ HOST = config['DEFAULT']['HOST']
 PORT = int(config['DEFAULT']['PORT'])
 
 
-class adminSocket(commonSocket):
+class AdminSocket(CommonSocket):
     def __init__(self, ipAddr, port):
         super().__init__(ipAddr, port)
 
@@ -30,6 +29,47 @@ class adminSocket(commonSocket):
         else:
             print("[ERROR] process doesn't exist. please check")
 
+    def _killAllUser(self):
+        killAllMsg = protocol.killAllUser()
+        self.sendMsg(killAllMsg)
+
+    def _printServerStat(self):
+        print()
+        reqServerStatMsg = protocol.reqServerStat()
+        self.sendMsg(reqServerStatMsg)
+        resMsg = self.recv()
+        if resMsg['proto'] == 'RES_SERVER_STAT':
+            print('CPU Utilization:', resMsg['cpu'], '%')
+            print('Memory Available:', resMsg['mem']/1024/1024, 'MB')
+            print('Number of client(s):', resMsg['clientNum'])
+            print('Connections:', end=' ')
+            if len(resMsg['connections']) == 0:
+                print('None')
+            else:
+                print('')
+            for name, friends in resMsg['connections'].items():
+                print('\t', name, '=>', friends)
+        else:
+            raise ConnectionError('')
+
+    def _printClientStat(self):
+        print('Which client info do you want?')
+        name = input()
+        print()
+        if name in self._listProc():
+            reqClientStatMsg = protocol.reqClientStat(name)
+            self.sendMsg(reqClientStatMsg)
+            resMsg = self.recv()
+            if resMsg['proto'] == 'RES_CLIENT_STAT':
+                print(f'client [{name}]\nresource status')
+                print('CPU Utilization:', resMsg['cpu'], '%')
+                print('Memory Available:', resMsg['mem'] / 1024 / 1024, 'MB')
+                print('Connections:', resMsg['connections'])
+            else:
+                raise ConnectionError('')
+        else:
+            print("[ERROR] process doesn't exist. please check")
+
     def run(self):
         while True:
             print()
@@ -44,11 +84,11 @@ class adminSocket(commonSocket):
             elif menuSelect == 2:
                 self._killUser()
             elif menuSelect == 3:
-                pass
+                self._killAllUser()
             elif menuSelect == 4:
-                pass
+                self._printServerStat()
             elif menuSelect == 5:
-                pass
+                self._printClientStat()
             else:
                 pass
 
@@ -62,6 +102,6 @@ class adminSocket(commonSocket):
 
 
 if __name__ == '__main__':
-    admin = adminSocket(HOST, PORT)
+    admin = AdminSocket(HOST, PORT)
     admin.connect()
     admin.run()

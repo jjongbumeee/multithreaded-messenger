@@ -2,6 +2,9 @@
 import configparser
 import socket
 import threading
+
+import psutil
+
 import protocol
 import json
 from pprint import pprint
@@ -130,11 +133,41 @@ class ServerSocket:
             errorMsg['msg'] = 'user not found'
             self._send(adminSoc, errorMsg)
 
-    def delSocket(self, sock):
+    def _killAllProc(self):
+        for sockName, sockItem in self.socketPool.items():
+            killUserMsg = protocol.killUser(sockName)
+            self._send(sockItem['socket'], killUserMsg)
+        self.socketPool.clear()
+
+    def _delSocket(self, sock):
         for name, val in self.socketPool.items():
             if val['socket'] == sock:
                 del self.socketPool[name]
                 return
+
+    def _monitorServerStat(self, adminSocket):
+        friendConnections = {}
+        for name, val in self.socketPool.items():
+            friendConnections[name] = val['friends']
+        monitoringMsg = protocol.resServerStat(psutil.cpu_percent(), psutil.virtual_memory().available,
+                                               len(self.socketPool), friendConnections)
+        pprint(monitoringMsg)
+        self._send(adminSocket, monitoringMsg)
+
+    def _monitorClientStat(self, adminSocket, clientName):
+        clientReqMsg = protocol.reqClientStat(clientName)
+        if clientName in list(self.socketPool.keys()):
+            self._send(self.socketPool[clientName]['socket'], clientReqMsg)
+            clientResMsg = self._recv(self.socketPool[clientName]['socket'])
+            if clientResMsg['proto'] == 'RES_CLIENT_STAT':
+                serverResMsg = protocol.resClientStat(clientResMsg['cpu'], clientResMsg['mem'],
+                                                      self.socketPool[clientName]['friends'])
+                self._send(adminSocket, serverResMsg)
+            else:
+                raise ConnectionError('protocol error')
+        else:
+            print('ERROR')
+            raise Exception('client name not found')
 
     def _adminMsgHandle(self, adminSocket):
         msg = self._recv(adminSocket)
@@ -143,9 +176,11 @@ class ServerSocket:
         elif msg['proto'] == 'KILL_USER':
             self._killProc(msg['name'], adminSocket)
         elif msg['proto'] == 'KILL_ALL':
-            pass
-        elif msg['proto'] == 'SERVER_RESOURCE':
-            pass
+            self._killAllProc()
+        elif msg['proto'] == 'REQ_SERVER_STAT':
+            self._monitorServerStat(adminSocket)
+        elif msg['proto'] == 'REQ_CLIENT_STAT':
+            self._monitorClientStat(adminSocket, msg['name'])
 
     def _handler(self, clientSocketObj, addr):
         print('Connected by', addr)
@@ -160,9 +195,9 @@ class ServerSocket:
                     self._adminMsgHandle(clientSocketObj)
 
         except Exception as e:
-            self.delSocket(clientSocketObj)
-            print(f'{addr} => except : {e}')
-            pprint(self.socketPool)
+            self._delSocket(clientSocketObj)
+            print(f'{addr} => {e}')
+            # pprint(self.socketPool)
 
     def connect(self):
         self.serverSocket.bind(('', self.port))
