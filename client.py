@@ -1,9 +1,11 @@
 # client.py
 import configparser
+import signal
 from commonSocket import commonSocket
 import threading
 import protocol
-import setproctitle
+import os
+import psutil
 from datetime import datetime
 
 config = configparser.ConfigParser()
@@ -11,8 +13,6 @@ config.read('config.ini')
 
 HOST = config['DEFAULT']['HOST']
 PORT = int(config['DEFAULT']['PORT'])
-setproctitle.setproctitle('messenger2')
-print(setproctitle.getproctitle())
 
 
 class ClientSocket(commonSocket):
@@ -20,7 +20,6 @@ class ClientSocket(commonSocket):
         super().__init__(ipAddr, port)
         self.friendList = []
         self.recvHandler = ''
-        self.myName = ''
 
     def connect(self):
         # REQ_NAME recv
@@ -57,6 +56,9 @@ class ClientSocket(commonSocket):
                 msg = self.recv()
                 if msg['proto'] == 'SEND_MSG':
                     print(f"""({datetime.now().strftime('%Y-%m-%d %H:%M')}) {msg['sender']} : {msg['message']}""")
+                elif msg['proto'] == 'KILL_USER':
+                    clientSocket.close()
+                    psutil.Process(os.getpid()).send_signal(signal.SIGTERM)
         except Exception as e:
             print(e)
 

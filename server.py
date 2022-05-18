@@ -3,8 +3,8 @@ import configparser
 import socket
 import threading
 import protocol
-import psutil
 import json
+from pprint import pprint
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -27,7 +27,7 @@ class ServerSocket:
         data = client.recv(1024)
         if not data:
             raise Exception('connection closed')
-        return data.decode()
+        return json.loads(data.decode())
 
     def _getInitFriendList(self, name):
         friendList = []
@@ -43,7 +43,7 @@ class ServerSocket:
 
         # response client name (RES_NAME) recv
         try:
-            nameRes = json.loads(self._recv(clientSocketObj))
+            nameRes = self._recv(clientSocketObj)
             if nameRes['proto'] == 'RES_NAME' and nameRes['result'] == 200:
                 name = nameRes['name']
                 self.socketPool[name] = {
@@ -58,7 +58,7 @@ class ServerSocket:
                 self._send(clientSocketObj, friendsListMsg)
 
                 # ack wait (ACK) recv
-                ackRes = json.loads(self._recv(clientSocketObj))
+                ackRes = self._recv(clientSocketObj)
                 if ackRes['proto'] == 'ACK' and ackRes['result'] == 200:
                     # for debug
                     # print(self.socketPool)
@@ -74,7 +74,7 @@ class ServerSocket:
             print(e)
 
     def _friendMsgHandle(self, client):
-        msg = json.loads(self._recv(client))
+        msg = self._recv(client)
         # validate proto
         if msg['proto'] == 'SEND_MSG':
             # broadcast
@@ -116,27 +116,32 @@ class ServerSocket:
         else:
             raise ConnectionAbortedError('protocol error')
 
-    def _listProc(self):
-        try:
-            for proc in psutil.process_iter():
-                processName = proc.name()
-                pid = proc.pid
-                if processName == 'Python':
+    def _listProc(self, adminSoc):
+        procListMsg = protocol.resListProc(list(self.socketPool.keys()))
+        self._send(adminSoc, procListMsg)
 
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            pass
-    def _killPid(self, pid):
-        try:
-            pass
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            pass
+    def _killProc(self, name, adminSoc):
+        if name in list(self.socketPool.keys()):
+            killUserMsg = protocol.killUser(name)
+            self._send(self.socketPool[name]['socket'], killUserMsg)
+            del self.socketPool[name]
+        else:
+            errorMsg = protocol.ack(result=404)
+            errorMsg['msg'] = 'user not found'
+            self._send(adminSoc, errorMsg)
+
+    def delSocket(self, sock):
+        for name, val in self.socketPool.items():
+            if val['socket'] == sock:
+                del self.socketPool[name]
+                return
 
     def _adminMsgHandle(self, adminSocket):
-        msg = json.loads(self._recv(adminSocket))
-        if msg['proto'] == 'LIST_PROC':
-            self._listProc()
+        msg = self._recv(adminSocket)
+        if msg['proto'] == 'REQ_LIST_PROC':
+            self._listProc(adminSocket)
         elif msg['proto'] == 'KILL_USER':
-            self._killPid(msg['pid'])
+            self._killProc(msg['name'], adminSocket)
         elif msg['proto'] == 'KILL_ALL':
             pass
         elif msg['proto'] == 'SERVER_RESOURCE':
@@ -155,7 +160,9 @@ class ServerSocket:
                     self._adminMsgHandle(clientSocketObj)
 
         except Exception as e:
+            self.delSocket(clientSocketObj)
             print(f'{addr} => except : {e}')
+            pprint(self.socketPool)
 
     def connect(self):
         self.serverSocket.bind(('', self.port))

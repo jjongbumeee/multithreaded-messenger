@@ -36,7 +36,8 @@ def ack(result=200):
     return {
         'proto': 'ACK',
         'receiver': 'SERVER',
-        'result': result
+        'result': result,
+        'msg': ''
     }
 
 
@@ -48,18 +49,32 @@ def isAdmin(password='1234'):
     }
 
 
-def listProcesses():
+def reqListProc():
     return {
-        'proto': 'LIST_PROC'
+        'proto': 'REQ_LIST_PROC'
     }
 
 
-def killUser(pid):
+def resListProc(procList):
+    return {
+        'proto': 'RES_LIST_PROC',
+        'proc': procList
+    }
+
+
+def killUser(name):
     return {
         'proto': 'KILL_USER',
-        'pid': pid
+        'name': name
     }
 
+
+def resKillUser(name, result=200):
+    return {
+        'proto': 'RES_KILL_USER',
+        'name': name,
+        'result': result
+    }
 
 def killAllUser():
     return {
