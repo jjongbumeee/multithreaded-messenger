@@ -7,6 +7,7 @@ import protocol
 import os
 import psutil
 from datetime import datetime
+import time
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -54,7 +55,9 @@ class ClientSocket(CommonSocket):
             # handle received messages
             while True:
                 msg = self.recv()
-                if msg['proto'] == 'SEND_MSG':
+                if len(msg) == 0:
+                    self.reconnect()
+                elif msg['proto'] == 'SEND_MSG':
                     print(f"""({datetime.now().strftime('%Y-%m-%d %H:%M')}) {msg['sender']} : {msg['message']}""")
                 elif msg['proto'] == 'KILL_USER':
                     clientSocket.close()
@@ -94,6 +97,8 @@ if __name__ == '__main__':
     clientSocket.openRecvThread()
     try:
         while True:
+            while not clientSocket.connected:
+                time.sleep(1)
             print('Select Unicast(u) / Broadcast(b) / Multicast(m)')
             type = input()
             if type == 'u':
