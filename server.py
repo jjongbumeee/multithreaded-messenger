@@ -2,9 +2,7 @@
 import configparser
 import socket
 import threading
-
 import psutil
-
 import protocol
 import json
 from pprint import pprint
@@ -119,10 +117,12 @@ class ServerSocket:
         else:
             raise ConnectionAbortedError('protocol error')
 
+    # 1. list processes
     def _listProc(self, adminSoc):
         procListMsg = protocol.resListProc(list(self.socketPool.keys()))
         self._send(adminSoc, procListMsg)
 
+    # 2. kill process
     def _killProc(self, name, adminSoc):
         if name in list(self.socketPool.keys()):
             killUserMsg = protocol.killUser(name)
@@ -133,18 +133,21 @@ class ServerSocket:
             errorMsg['msg'] = 'user not found'
             self._send(adminSoc, errorMsg)
 
+    # 3. kill all processes
     def _killAllProc(self):
         for sockName, sockItem in self.socketPool.items():
             killUserMsg = protocol.killUser(sockName)
             self._send(sockItem['socket'], killUserMsg)
         self.socketPool.clear()
 
+    # delete socket by 'sock'
     def _delSocket(self, sock):
         for name, val in self.socketPool.items():
             if val['socket'] == sock:
                 del self.socketPool[name]
                 return
 
+    # 4. view server resources
     def _monitorServerStat(self, adminSocket):
         friendConnections = {}
         for name, val in self.socketPool.items():
@@ -154,6 +157,7 @@ class ServerSocket:
         pprint(monitoringMsg)
         self._send(adminSocket, monitoringMsg)
 
+    # view client resources
     def _monitorClientStat(self, adminSocket, clientName):
         clientReqMsg = protocol.reqClientStat(clientName)
         if clientName in list(self.socketPool.keys()):

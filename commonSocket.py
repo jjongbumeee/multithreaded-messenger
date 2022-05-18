@@ -43,7 +43,7 @@ class CommonSocket:
                     self.recv()
                     self.sendMsg(protocol.ack())
                 return
-            except socket.error as e:
+            except socket.error:
                 time.sleep(5)
                 print('.', end='', flush=True)
         print('reconnect failed')

@@ -1,13 +1,13 @@
 # client.py
 import configparser
 import signal
-from commonSocket import CommonSocket
 import threading
 import protocol
 import os
 import psutil
-from datetime import datetime
 import time
+from commonSocket import CommonSocket
+from datetime import datetime
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -97,6 +97,7 @@ if __name__ == '__main__':
     clientSocket.openRecvThread()
     try:
         while True:
+            # wait while reconnected
             while not clientSocket.connected:
                 time.sleep(1)
             print('Select Unicast(u) / Broadcast(b) / Multicast(m)')
