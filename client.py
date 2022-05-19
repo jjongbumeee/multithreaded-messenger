@@ -63,7 +63,8 @@ class ClientSocket(CommonSocket):
                     clientSocket.close()
                     psutil.Process(os.getpid()).send_signal(signal.SIGTERM)
                 elif msg['proto'] == 'REQ_CLIENT_STAT':
-                    resMsg = protocol.resClientStat(psutil.cpu_percent(), psutil.virtual_memory().available)
+                    resMsg = protocol.resClientStat(psutil.cpu_percent(), psutil.virtual_memory().available,
+                                                    msg['name'])
                     self.sendMsg(resMsg)
         except Exception as e:
             print(e)

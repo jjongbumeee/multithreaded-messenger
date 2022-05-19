@@ -18,6 +18,7 @@ class ServerSocket:
         self.serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socketPool = {}
         self.initFriends = [s.strip() for s in config['DEFAULT']['INIT_FRI'].split(',')]
+        self.adminSocket = {}
         print(self.initFriends)
 
     def _send(self, client, msg):
@@ -114,6 +115,10 @@ class ServerSocket:
                         sendMsg = protocol.sendMsg(msg['message'], msg['sender'], 'multi', target)
                         print(sendMsg)
                         self._send(self.socketPool[target]['socket'], sendMsg)
+        elif msg['proto'] == 'RES_CLIENT_STAT':
+            serverResMsg = protocol.resClientStat(msg['cpu'], msg['mem'], msg['name'],
+                                                  self.socketPool[msg['name']]['friends'])
+            self._send(self.adminSocket, serverResMsg)
         else:
             raise ConnectionAbortedError('protocol error')
 
@@ -159,6 +164,7 @@ class ServerSocket:
 
     # view client resources
     def _monitorClientStat(self, adminSocket, clientName):
+        self.adminSocket = adminSocket
         clientReqMsg = protocol.reqClientStat(clientName)
         if clientName in list(self.socketPool.keys()):
             self._send(self.socketPool[clientName]['socket'], clientReqMsg)

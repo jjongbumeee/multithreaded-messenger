@@ -106,9 +106,10 @@ def reqClientStat(name):
     }
 
 
-def resClientStat(util, mem, conn=''):
+def resClientStat(util, mem, name, conn=''):
     return {
         'proto': 'RES_CLIENT_STAT',
+        'name': name,
         'cpu': util,
         'mem': mem,
         'connections': conn
